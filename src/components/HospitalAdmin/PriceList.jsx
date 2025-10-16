@@ -56,7 +56,17 @@ const Pricelist = () => {
     }
 
     try {
-      await api.createPricelistItem(formData, token);
+      const validFromUtc = new Date(`${formData.validFrom}T00:00:00Z`).toISOString();
+      const validUntilUtc = new Date(`${formData.validUntil}T00:00:00Z`).toISOString();
+
+      const payload = {
+        medicalServiceId: formData.medicalServiceId,
+        price: formData.price,
+        validFrom: validFromUtc,
+        validUntil: validUntilUtc
+      };
+
+      await api.createPricelistItem(payload, token);
       setSuccess('Cenovnik uspešno ažuriran!');
       setFormData({
         medicalServiceId: '',

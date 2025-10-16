@@ -17,6 +17,16 @@ const Appointments = () => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState('');
+
+  // Reschedule controls (mirror the create flow)
+  const [rescheduleDurationMinutes, setRescheduleDurationMinutes] = useState(60);
+  const [rescheduleSelectedDate, setRescheduleSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [rescheduleAvailableSlots, setRescheduleAvailableSlots] = useState([]);
+  const [rescheduleSelectedSlotIndex, setRescheduleSelectedSlotIndex] = useState('');
   
   
   const [formData, setFormData] = useState({
@@ -56,6 +66,77 @@ const Appointments = () => {
     loadData();
   }, []);
 
+  const toUtcIsoString = (localDateTimeString) => {
+    if (!localDateTimeString) return '';
+    const date = new Date(localDateTimeString);
+    return date.toISOString();
+  };
+
+  const intervalsOverlap = (aStartMs, aEndMs, bStartMs, bEndMs) => {
+    return aStartMs < bEndMs && aEndMs > bStartMs;
+  };
+
+  const computeAvailableSlots = (doctorAppts, localDateString, slotMinutes) => {
+    if (!localDateString || !slotMinutes) return [];
+    const [year, month, day] = localDateString.split('-').map(Number);
+    const windowStart = new Date(year, month - 1, day, 8, 0, 0, 0);
+    const windowEnd = new Date(year, month - 1, day, 18, 0, 0, 0);
+
+    const busyIntervals = (doctorAppts || [])
+      .filter(a => ['Scheduled', 'Confirmed'].includes(a.status))
+      .map(a => ({
+        start: new Date(a.startsAtUtc),
+        end: new Date(a.endsAtUtc)
+      }))
+      .filter(({ start, end }) => start < windowEnd && end > windowStart)
+      .sort((x, y) => x.start - y.start);
+
+    const slots = [];
+    let cursor = new Date(windowStart);
+    const slotMs = slotMinutes * 60 * 1000;
+
+    const isFree = (start, end) => {
+      const startMs = start.getTime();
+      const endMs = end.getTime();
+      return !busyIntervals.some(({ start: bS, end: bE }) => intervalsOverlap(startMs, endMs, bS.getTime(), bE.getTime()));
+    };
+
+    while (cursor.getTime() + slotMs <= windowEnd.getTime()) {
+      const slotStart = new Date(cursor);
+      const slotEnd = new Date(cursor.getTime() + slotMs);
+      if (isFree(slotStart, slotEnd)) {
+        const label = `${slotStart.toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })} - ${slotEnd.toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })}`;
+        const toLocalInput = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        slots.push({
+          startLocal: toLocalInput(slotStart),
+          endLocal: toLocalInput(slotEnd),
+          label
+        });
+      }
+      // advance by 30 minutes grid
+      cursor = new Date(cursor.getTime() + 30 * 60 * 1000);
+    }
+    return slots;
+  };
+
+  // Recompute available slots when doctor, date, or duration changes
+  useEffect(() => {
+    const updateSlots = async () => {
+      try {
+        if (!formData.doctorId) { setAvailableSlots([]); return; }
+        const localDateString = selectedDate;
+        const doctorAppts = await api.getAppointmentsByDoctor(formData.doctorId, token).catch(() => []);
+        const slots = computeAvailableSlots(doctorAppts, localDateString, durationMinutes);
+        setAvailableSlots(slots);
+        setSelectedSlotIndex('');
+      } catch (_e) {
+        setAvailableSlots([]);
+      }
+    };
+    updateSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.doctorId, selectedDate, durationMinutes]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -93,14 +174,48 @@ const Appointments = () => {
       return;
     }
 
+    if (!formData.startsAtUtc || !formData.endsAtUtc) {
+      setError('Molimo izaberite slobodan termin');
+      return;
+    }
+
     if (new Date(formData.startsAtUtc) >= new Date(formData.endsAtUtc)) {
       setError('Početno vreme mora biti pre krajnjeg vremena');
       return;
     }
 
     try {
-      console.log('Sending appointment data:', formData);
-      const response = await api.createAppointment(formData, token);
+      // Convert times to UTC ISO strings with Z
+      const startUtcIso = toUtcIsoString(formData.startsAtUtc);
+      const endUtcIso = toUtcIsoString(formData.endsAtUtc);
+
+      // Pre-check overlap using doctor's existing appointments
+      const doctorAppointments = await api.getAppointmentsByDoctor(formData.doctorId, token).catch(() => []);
+
+      const startMs = new Date(startUtcIso).getTime();
+      const endMs = new Date(endUtcIso).getTime();
+
+      const blockingStatuses = ['Scheduled', 'Confirmed'];
+      const hasOverlap = (doctorAppointments || []).some((appt) => {
+        if (!blockingStatuses.includes(appt.status)) return false;
+        const apptStartMs = new Date(appt.startsAtUtc).getTime();
+        const apptEndMs = new Date(appt.endsAtUtc).getTime();
+        return intervalsOverlap(startMs, endMs, apptStartMs, apptEndMs);
+      });
+
+      if (hasOverlap) {
+        setError('Izabrani termin se preklapa sa postojećim terminom doktora. Izaberite drugo vreme.');
+        return;
+      }
+
+      const payload = {
+        ...formData,
+        startsAtUtc: startUtcIso,
+        endsAtUtc: endUtcIso
+      };
+
+      console.log('Sending appointment data:', payload);
+      const response = await api.createAppointment(payload, token);
       console.log('Response:', response);
       setSuccess('Termin uspešno kreiran!');
       setFormData({
@@ -128,7 +243,46 @@ const Appointments = () => {
     setSuccess('');
 
     try {
-      await api.rescheduleAppointment(selectedAppointment.id, rescheduleData, token);
+      // Basic validation
+      if (!rescheduleData.newStartsAtUtc || !rescheduleData.newEndsAtUtc) {
+        setError('Molimo izaberite novi početak i kraj termina.');
+        return;
+      }
+
+      const localStart = new Date(rescheduleData.newStartsAtUtc);
+      const localEnd = new Date(rescheduleData.newEndsAtUtc);
+      if (localStart >= localEnd) {
+        setError('Početno vreme mora biti pre krajnjeg vremena');
+        return;
+      }
+
+      // Convert to UTC ISO strings before sending
+      const newStartUtcIso = toUtcIsoString(rescheduleData.newStartsAtUtc);
+      const newEndUtcIso = toUtcIsoString(rescheduleData.newEndsAtUtc);
+
+      // Pre-check overlap against doctor's other appointments (exclude the current one)
+      const doctorAppointments = await api.getAppointmentsByDoctor(selectedAppointment.doctorId, token).catch(() => []);
+      const startMs = new Date(newStartUtcIso).getTime();
+      const endMs = new Date(newEndUtcIso).getTime();
+      const blockingStatuses = ['Scheduled', 'Confirmed'];
+      const hasOverlap = (doctorAppointments || []).some((appt) => {
+        if (appt.id === selectedAppointment.id) return false; // ignore self
+        if (!blockingStatuses.includes(appt.status)) return false;
+        const apptStartMs = new Date(appt.startsAtUtc).getTime();
+        const apptEndMs = new Date(appt.endsAtUtc).getTime();
+        return intervalsOverlap(startMs, endMs, apptStartMs, apptEndMs);
+      });
+
+      if (hasOverlap) {
+        setError('Izabrani termin se preklapa sa drugim terminom doktora. Izaberite drugo vreme.');
+        return;
+      }
+
+      await api.rescheduleAppointment(
+        selectedAppointment.id,
+        { newStartsAtUtc: newStartUtcIso, newEndsAtUtc: newEndUtcIso },
+        token
+      );
       
       const newCount = selectedAppointment.rescheduleCount + 1;
       if (newCount >= 2) {
@@ -177,17 +331,36 @@ const Appointments = () => {
 
   const openRescheduleModal = (appointment) => {
     setSelectedAppointment(appointment);
+    // Initialize reschedule controls from the appointment
     const start = new Date(appointment.startsAtUtc);
-    start.setDate(start.getDate() + 1);
-    const end = new Date(appointment.endsAtUtc);
-    end.setDate(end.getDate() + 1);
-    
-    setRescheduleData({
-      newStartsAtUtc: start.toISOString().slice(0, 16),
-      newEndsAtUtc: end.toISOString().slice(0, 16)
-    });
+    const localDate = new Date(start.getTime() - start.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    setRescheduleSelectedDate(localDate);
+    setRescheduleDurationMinutes(60);
+    setRescheduleSelectedSlotIndex('');
+    setRescheduleAvailableSlots([]);
+    // Clear direct datetime-local fields; they will be set when a slot is selected
+    setRescheduleData({ newStartsAtUtc: '', newEndsAtUtc: '' });
     setShowRescheduleModal(true);
   };
+
+  // Recompute reschedule available slots when inputs change
+  useEffect(() => {
+    const updateRescheduleSlots = async () => {
+      try {
+        if (!selectedAppointment?.doctorId) { setRescheduleAvailableSlots([]); return; }
+        const doctorAppts = await api.getAppointmentsByDoctor(selectedAppointment.doctorId, token).catch(() => []);
+        const slots = computeAvailableSlots(doctorAppts, rescheduleSelectedDate, rescheduleDurationMinutes);
+        setRescheduleAvailableSlots(slots);
+        setRescheduleSelectedSlotIndex('');
+      } catch (_e) {
+        setRescheduleAvailableSlots([]);
+      }
+    };
+    if (showRescheduleModal) {
+      updateRescheduleSlots();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRescheduleModal, selectedAppointment, rescheduleSelectedDate, rescheduleDurationMinutes]);
 
   const openCancelModal = (appointment) => {
     setSelectedAppointment(appointment);
@@ -477,25 +650,55 @@ const Appointments = () => {
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '16px', marginTop: '8px' }}>
                 <div className="form-group">
-                  <label>Početak *</label>
+                  <label>Datum</label>
                   <input
-                    type="datetime-local"
-                    value={formData.startsAtUtc}
-                    onChange={(e) => setFormData({...formData, startsAtUtc: e.target.value})}
-                    required
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
                   />
+                </div>
+                <div className="form-group">
+                  <label>Trajanje</label>
+                  <select
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  >
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>60 min</option>
+                    <option value={90}>90 min</option>
+                  </select>
                 </div>
 
                 <div className="form-group">
-                  <label>Kraj *</label>
-                  <input
-                    type="datetime-local"
-                    value={formData.endsAtUtc}
-                    onChange={(e) => setFormData({...formData, endsAtUtc: e.target.value})}
-                    required
-                  />
+                  <label>Dostupni Termini</label>
+                  <select
+                    value={selectedSlotIndex}
+                    onChange={(e) => {
+                      const idx = e.target.value;
+                      setSelectedSlotIndex(idx);
+                      const indexNum = Number(idx);
+                      if (!isNaN(indexNum) && availableSlots[indexNum]) {
+                        const chosen = availableSlots[indexNum];
+                        setFormData({ ...formData, startsAtUtc: chosen.startLocal, endsAtUtc: chosen.endLocal });
+                      } else {
+                        setFormData({ ...formData, startsAtUtc: '', endsAtUtc: '' });
+                      }
+                    }}
+                  >
+                    <option value="">-- Izaberite slobodan termin --</option>
+                    {availableSlots.map((s, i) => (
+                      <option key={`${s.startLocal}-${i}`} value={i}>{s.label}</option>
+                    ))}
+                  </select>
+                  {formData.doctorId && availableSlots.length === 0 && (
+                    <div style={{ color: '#e53e3e', fontSize: '12px', marginTop: '4px' }}>Nema slobodnih termina za izabrani datum i trajanje.</div>
+                  )}
                 </div>
               </div>
 
@@ -569,24 +772,55 @@ const Appointments = () => {
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleRescheduleSubmit}>
-              <div className="form-group">
-                <label>Novi Početak *</label>
-                <input
-                  type="datetime-local"
-                  value={rescheduleData.newStartsAtUtc}
-                  onChange={(e) => setRescheduleData({...rescheduleData, newStartsAtUtc: e.target.value})}
-                  required
-                />
-              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label>Dan</label>
+                  <input
+                    type="date"
+                    value={rescheduleSelectedDate}
+                    onChange={(e) => setRescheduleSelectedDate(e.target.value)}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Novi Kraj *</label>
-                <input
-                  type="datetime-local"
-                  value={rescheduleData.newEndsAtUtc}
-                  onChange={(e) => setRescheduleData({...rescheduleData, newEndsAtUtc: e.target.value})}
-                  required
-                />
+                <div className="form-group">
+                  <label>Trajanje</label>
+                  <select
+                    value={rescheduleDurationMinutes}
+                    onChange={(e) => setRescheduleDurationMinutes(Number(e.target.value))}
+                  >
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>60 min</option>
+                    <option value={90}>90 min</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Dostupni Termini</label>
+                  <select
+                    value={rescheduleSelectedSlotIndex}
+                    onChange={(e) => {
+                      const idx = e.target.value;
+                      setRescheduleSelectedSlotIndex(idx);
+                      const indexNum = Number(idx);
+                      if (!isNaN(indexNum) && rescheduleAvailableSlots[indexNum]) {
+                        const chosen = rescheduleAvailableSlots[indexNum];
+                        setRescheduleData({ newStartsAtUtc: chosen.startLocal, newEndsAtUtc: chosen.endLocal });
+                      } else {
+                        setRescheduleData({ newStartsAtUtc: '', newEndsAtUtc: '' });
+                      }
+                    }}
+                  >
+                    <option value="">-- Izaberite slobodan termin --</option>
+                    {rescheduleAvailableSlots.map((s, i) => (
+                      <option key={`${s.startLocal}-${i}`} value={i}>{s.label}</option>
+                    ))}
+                  </select>
+                  {selectedAppointment?.doctorId && rescheduleAvailableSlots.length === 0 && (
+                    <div style={{ color: '#e53e3e', fontSize: '12px', marginTop: '4px' }}>Nema slobodnih termina za izabrani dan i trajanje.</div>
+                  )}
+                </div>
               </div>
 
               <div className="modal-footer">

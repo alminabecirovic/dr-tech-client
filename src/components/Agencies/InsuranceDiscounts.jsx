@@ -96,21 +96,8 @@ const InsuranceDiscounts = () => {
 
     try {
       const serviceIdsArray = calcData.serviceIds.split(',').map(id => id.trim());
-      const response = await fetch('https://localhost:7220/api/Discount/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ serviceIds: serviceIdsArray })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setCalcData({ ...calcData, result });
-      } else {
-        setError('Greška pri izračunavanju popusta');
-      }
+      const result = await api.post('/Discount/calculate', { serviceIds: serviceIdsArray }, token);
+      setCalcData({ ...calcData, result });
     } catch (err) {
       setError('Greška pri izračunavanju popusta');
       console.error(err);

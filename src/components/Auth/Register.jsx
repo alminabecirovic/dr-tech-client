@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 import { Hospital } from 'lucide-react';
 
 const Register = () => {
@@ -21,24 +22,9 @@ const Register = () => {
 
   const loadRoles = async () => {
   try {
-    const response = await fetch('https://localhost:7220/api/Auth/roles', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const data = await api.get('/Auth/roles');
     console.log('Roles loaded:', data);
-    
     setRoles(data);
-    
-    // Set default role
     const defaultRole = data.find(r => r.defaultRole);
     if (defaultRole) {
       setRole(defaultRole.value);

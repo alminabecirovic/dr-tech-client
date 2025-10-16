@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -19,12 +20,8 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async () => {
     try {
-      const response = await fetch('https://localhost:7220/api/Auth/profile', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const profile = await response.json();
+      const profile = await api.get('/Auth/profile', token);
+      if (profile) {
         setUser(profile);
       }
     } catch (error) {
@@ -35,15 +32,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await fetch('https://localhost:7220/api/Auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!response.ok) throw new Error('Login failed');
-
-      const data = await response.json();
+      const data = await api.post('/Auth/login', { email, password });
       setToken(data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       return data;
@@ -57,18 +46,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, role, fullName) => {
     setLoading(true);
     try {
-      const response = await fetch('https://localhost:7220/api/Auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role, fullName })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
-      }
-
-      return await response.json();
+      const data = await api.post('/Auth/register', { email, password, role, fullName });
+      return data;
     } catch (error) {
       throw error;
     } finally {
