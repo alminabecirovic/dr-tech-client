@@ -2,24 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import Navbar from './../Layout/Navbar';
-import { Calendar, Plus, Hospital, Activity, Clock, CheckCircle, XCircle, AlertCircle, User } from 'lucide-react';
+import { Calendar, Plus, Hospital, Activity, Clock, CheckCircle, XCircle, AlertCircle, Stethoscope } from 'lucide-react';
 
 const MyReservations = () => {
   const { token, user } = useAuth();
-  const [reservations, setReservations] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [hospitals, setHospitals] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     hospitalId: '',
     departmentId: '',
-    patientId: user?.id || '',
+    doctorId: '',
     medicalServiceId: '',
     startsAtUtc: '',
     endsAtUtc: '',
-    status: 'Pending'
+    type: 'Consultation',
+    notes: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -31,18 +33,18 @@ const MyReservations = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [reservationsData, hospitalsData, departmentsData, servicesData] = await Promise.all([
-        api.get('/Reservations', token),
+      const [appointmentsData, hospitalsData, departmentsData, doctorsData, servicesData] = await Promise.all([
+        api.get('/User/appointments', token),
         api.get('/Hospitals', token),
         api.get('/Departments', token),
-        api.get('/Services', token)
+        api.get('/Doctors', token),
+        api.get('/User/services', token).catch(() => [])
       ]);
 
-      // Filter reservations for current user if role is InsuredUser
-      const userReservations = reservationsData?.filter(r => r.patientId === user?.id) || reservationsData || [];
-      setReservations(userReservations);
+      setAppointments(appointmentsData || []);
       setHospitals(hospitalsData || []);
       setDepartments(departmentsData || []);
+      setDoctors(doctorsData || []);
       setServices(servicesData || []);
     } catch (err) {
       setError('Greška pri učitavanju podataka');
@@ -57,8 +59,8 @@ const MyReservations = () => {
     setError('');
     setSuccess('');
 
-    if (!formData.hospitalId || !formData.departmentId || !formData.medicalServiceId || !formData.startsAtUtc || !formData.endsAtUtc) {
-      setError('Sva polja su obavezna');
+    if (!formData.hospitalId || !formData.departmentId || !formData.doctorId || !formData.startsAtUtc || !formData.endsAtUtc) {
+      setError('Sva obavezna polja moraju biti popunjena');
       return;
     }
 
@@ -71,30 +73,27 @@ const MyReservations = () => {
     }
 
     try {
-      const payload = {
-        ...formData,
-        patientId: user?.id || formData.patientId
-      };
-
-      await api.post('/Reservations', payload, token);
-      setSuccess('Rezervacija uspešno kreirana!');
+      await api.post('/User/request-appointment', formData, token);
+      
+      setSuccess('Zahtev za termin uspešno poslat!');
       setFormData({
         hospitalId: '',
         departmentId: '',
-        patientId: user?.id || '',
+        doctorId: '',
         medicalServiceId: '',
         startsAtUtc: '',
         endsAtUtc: '',
-        status: 'Pending'
+        type: 'Consultation',
+        notes: ''
       });
       setShowModal(false);
       loadData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       if (err.message && err.message.includes('overlap')) {
-        setError('Već imate aktivnu rezervaciju u ovom periodu');
+        setError('Već imate aktivan termin u ovom periodu');
       } else {
-        setError('Greška pri kreiranju rezervacije');
+        setError('Greška pri kreiranju zahteva za termin');
       }
       console.error(err);
     }
@@ -102,19 +101,25 @@ const MyReservations = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      Pending: { bg: '#fff7e6', color: '#fa8c16', border: '#ffd591' },
+      Requested: { bg: '#fff7e6', color: '#fa8c16', border: '#ffd591' },
+      Scheduled: { bg: '#f0f5ff', color: '#1890ff', border: '#adc6ff' },
       Confirmed: { bg: '#f6ffed', color: '#52c41a', border: '#b7eb8f' },
-      Cancelled: { bg: '#fff2f0', color: '#cf1322', border: '#ffccc7' }
+      Cancelled: { bg: '#fff2f0', color: '#cf1322', border: '#ffccc7' },
+      Completed: { bg: '#f5f5f5', color: '#595959', border: '#d9d9d9' }
     };
     const icons = {
-      Pending: <Clock size={14} />,
+      Requested: <Clock size={14} />,
+      Scheduled: <Calendar size={14} />,
       Confirmed: <CheckCircle size={14} />,
-      Cancelled: <XCircle size={14} />
+      Cancelled: <XCircle size={14} />,
+      Completed: <CheckCircle size={14} />
     };
     const labels = {
-      Pending: 'Na čekanju',
+      Requested: 'Zahtevano',
+      Scheduled: 'Zakazano',
       Confirmed: 'Potvrđeno',
-      Cancelled: 'Otkazano'
+      Cancelled: 'Otkazano',
+      Completed: 'Završeno'
     };
     const style = styles[status] || { bg: '#f5f5f5', color: '#595959', border: '#d9d9d9' };
     
@@ -132,22 +137,22 @@ const MyReservations = () => {
         border: `1px solid ${style.border}`
       }}>
         {icons[status]}
-        {labels[status]}
+        {labels[status] || status}
       </span>
     );
   };
 
   const stats = {
-    total: reservations.length,
-    pending: reservations.filter(r => r.status === 'Pending').length,
-    confirmed: reservations.filter(r => r.status === 'Confirmed').length,
-    cancelled: reservations.filter(r => r.status === 'Cancelled').length
+    total: appointments.length,
+    requested: appointments.filter(a => a.status === 'Requested').length,
+    confirmed: appointments.filter(a => a.status === 'Confirmed' || a.status === 'Scheduled').length,
+    cancelled: appointments.filter(a => a.status === 'Cancelled').length
   };
 
   if (loading) {
     return (
       <div>
-        <Navbar title="Moje rezervacije" />
+        <Navbar title="Moji termini" />
         <div className="loading">Učitavanje...</div>
       </div>
     );
@@ -155,14 +160,14 @@ const MyReservations = () => {
 
   return (
     <div>
-      <Navbar title="Moje rezervacije" />
+      <Navbar title="Moji termini" />
       
       <div className="dashboard-container">
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#262626', margin: 0 }}>Moje rezervacije</h1>
-            <p style={{ color: '#8c8c8c', margin: '0.5rem 0 0 0' }}>Pregledajte i upravljajte svojim terminima</p>
+            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#262626', margin: 0 }}>Moji termini</h1>
+            <p style={{ color: '#8c8c8c', margin: '0.5rem 0 0 0' }}>Pregledajte i upravljajte svojim zakazanim terminima</p>
           </div>
           <button 
             onClick={() => setShowModal(true)}
@@ -180,7 +185,7 @@ const MyReservations = () => {
             }}
           >
             <Plus size={20} />
-            <span>Nova rezervacija</span>
+            <span>Zahtevaj termin</span>
           </button>
         </div>
 
@@ -233,8 +238,8 @@ const MyReservations = () => {
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fa8c16' }}>{stats.pending}</div>
-                <div style={{ fontSize: '0.875rem', color: '#8c8c8c' }}>Na čekanju</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fa8c16' }}>{stats.requested}</div>
+                <div style={{ fontSize: '0.875rem', color: '#8c8c8c' }}>Zahtevano</div>
               </div>
               <Clock size={32} color="#fa8c16" />
             </div>
@@ -259,12 +264,12 @@ const MyReservations = () => {
           </div>
         </div>
 
-        {/* Reservations Table */}
-        {reservations.length === 0 ? (
+        {/* Appointments Table */}
+        {appointments.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '12px' }}>
             <Calendar size={64} color="#d9d9d9" />
-            <h3 style={{ margin: '1rem 0 0.5rem 0', color: '#595959' }}>Nema rezervacija</h3>
-            <p style={{ color: '#8c8c8c' }}>Kreirajte prvu rezervaciju</p>
+            <h3 style={{ margin: '1rem 0 0.5rem 0', color: '#595959' }}>Nema termina</h3>
+            <p style={{ color: '#8c8c8c' }}>Zahtevajte prvi termin</p>
           </div>
         ) : (
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -278,10 +283,13 @@ const MyReservations = () => {
                     Odeljenje
                   </th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
-                    Usluga
+                    Doktor
                   </th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
                     Datum i vreme
+                  </th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
+                    Tip
                   </th>
                   <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
                     Status
@@ -289,12 +297,13 @@ const MyReservations = () => {
                 </tr>
               </thead>
               <tbody>
-                {reservations.map((reservation) => {
-                  const hospital = hospitals.find(h => h.id === reservation.hospitalId);
-                  const department = departments.find(d => d.id === reservation.departmentId);
-                  const service = services.find(s => s.id === reservation.medicalServiceId);
+                {appointments.map((appointment) => {
+                  const hospital = hospitals.find(h => h.id === appointment.hospitalId);
+                  const department = departments.find(d => d.id === appointment.departmentId);
+                  const doctor = doctors.find(d => d.id === appointment.doctorId);
+                  
                   return (
-                    <tr key={reservation.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <tr key={appointment.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{
@@ -318,20 +327,36 @@ const MyReservations = () => {
                         </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        <span style={{ color: '#262626', fontWeight: 500 }}>{service?.name || 'N/A'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Stethoscope size={16} color="#8c8c8c" />
+                          <span style={{ color: '#595959', fontSize: '0.875rem' }}>Dr. {doctor?.fullName || 'N/A'}</span>
+                        </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ color: '#262626', fontWeight: 500 }}>
-                            {new Date(reservation.startsAtUtc).toLocaleDateString('sr-RS')}
+                            {new Date(appointment.startsAtUtc).toLocaleDateString('sr-RS')}
                           </div>
                           <div style={{ color: '#8c8c8c', marginTop: '0.25rem' }}>
-                            {new Date(reservation.startsAtUtc).toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })} - {new Date(reservation.endsAtUtc).toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(appointment.startsAtUtc).toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })} - {new Date(appointment.endsAtUtc).toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        {getStatusBadge(reservation.status)}
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.25rem 0.75rem',
+                          background: '#f0f5ff',
+                          color: '#1890ff',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 500
+                        }}>
+                          {appointment.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        {getStatusBadge(appointment.status)}
                       </td>
                     </tr>
                   );
@@ -366,7 +391,7 @@ const MyReservations = () => {
             overflow: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#262626' }}>Nova rezervacija</h2>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#262626' }}>Zahtev za termin</h2>
               <button onClick={() => setShowModal(false)} style={{
                 background: 'none',
                 border: 'none',
@@ -377,7 +402,7 @@ const MyReservations = () => {
             </div>
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bolnica</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bolnica *</label>
                 <select
                   value={formData.hospitalId}
                   onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
@@ -397,7 +422,7 @@ const MyReservations = () => {
                 </select>
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Odeljenje</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Odeljenje *</label>
                 <select
                   value={formData.departmentId}
                   onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
@@ -417,7 +442,27 @@ const MyReservations = () => {
                 </select>
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Medicinska usluga</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Doktor *</label>
+                <select
+                  value={formData.doctorId}
+                  onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '6px',
+                    fontSize: '1rem'
+                  }}
+                  required
+                >
+                  <option value="">Izaberite doktora</option>
+                  {doctors.filter(d => !formData.departmentId || d.departmentId === formData.departmentId).map(doctor => (
+                    <option key={doctor.id} value={doctor.id}>Dr. {doctor.fullName}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Medicinska usluga (opciono)</label>
                 <select
                   value={formData.medicalServiceId}
                   onChange={(e) => setFormData({ ...formData, medicalServiceId: e.target.value })}
@@ -428,17 +473,37 @@ const MyReservations = () => {
                     borderRadius: '6px',
                     fontSize: '1rem'
                   }}
-                  required
                 >
-                  <option value="">Izaberite uslugu</option>
+                  <option value="">Izaberite uslugu (opciono)</option>
                   {services.map(service => (
                     <option key={service.id} value={service.id}>{service.name}</option>
                   ))}
                 </select>
               </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Tip *</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '6px',
+                    fontSize: '1rem'
+                  }}
+                  required
+                >
+                  <option value="Consultation">Konsultacija</option>
+                  <option value="Checkup">Pregled</option>
+                  <option value="Procedure">Procedura</option>
+                  <option value="Surgery">Operacija</option>
+                  <option value="Emergency">Hitno</option>
+                </select>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Početak</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Početak *</label>
                   <input
                     type="datetime-local"
                     value={formData.startsAtUtc}
@@ -454,7 +519,7 @@ const MyReservations = () => {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Kraj</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Kraj *</label>
                   <input
                     type="datetime-local"
                     value={formData.endsAtUtc}
@@ -470,6 +535,24 @@ const MyReservations = () => {
                   />
                 </div>
               </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Napomene</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Dodatne napomene..."
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '6px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
               <div style={{
                 padding: '1rem',
                 background: '#f0f5ff',
@@ -479,7 +562,7 @@ const MyReservations = () => {
                 fontSize: '0.875rem',
                 color: '#1890ff'
               }}>
-                <strong>Napomena:</strong> Možete imati samo jednu aktivnu rezervaciju u istom periodu.
+                <strong>Napomena:</strong> Možete imati samo jedan aktivan termin u istom periodu.
               </div>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 <button type="button" onClick={() => setShowModal(false)} style={{
@@ -504,7 +587,7 @@ const MyReservations = () => {
                   fontWeight: 500,
                   cursor: 'pointer'
                 }}>
-                  Rezerviši
+                  Zahtevaj termin
                 </button>
               </div>
             </form>

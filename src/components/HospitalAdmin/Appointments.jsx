@@ -464,12 +464,6 @@ const Appointments = () => {
         )}
 
         <div className="page-header">
-          <div>
-            <h2>Upravljanje Terminima</h2>
-            <p style={{ color: '#718096', marginTop: '8px' }}>
-              Zakazivanje i upravljanje pregledima i operacijama
-            </p>
-          </div>
           {(isHospitalAdmin || isDoctor) && (
             <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
               <Plus size={20} />

@@ -14,15 +14,19 @@ import Patients from './components/HospitalAdmin/Patients';
 import MyAppointments from './components/Doctor/MyAppointments';
 import Services from './components/HospitalAdmin/Services';
 import PriceList from './components/HospitalAdmin/PriceList';
-import AuditLogs from './components/Agencies/AuditLogs';
 import BrowseServices from './components/User/BrowseServices';  
 import MyReservations from './components/User/MyReservations';
-import InsuranceAgencies from './components/Agencies/InsuranceAgencies';
 import InsuranceContracts from './components/Agencies/InsuranceContracts';
 import InsuranceDiscounts from './components/Agencies/InsuranceDiscounts';
 import InsurancePayments from './components/Agencies/InsurancePayments';
-import MyPayments from './components/User/MyPayments';
-
+import HospitalContracts from './components/HospitalAdmin/HospitalContracts';
+import PaymentUpload from './components/User/PaymentUpload';
+import RequestService from './components/User/RequestService';
+import AgencyPatients from './components/Agencies/AgencyPatients';
+import InsuranceAgencies from './components/User/InsuranceAgencies';
+import DiscountRequestsAgency from './components/Agencies/DiscountRequestsAgency';
+import DiscountRequestsHospital from './components/HospitalAdmin/DiscountRequestsHospital';
+import MyDiscounts from './components/User/MyDiscounts';
 
 import './styles/global.css';
 
@@ -80,14 +84,62 @@ function AppRoutes() {
         }
       />
 
-    
-
+      <Route
+        path="/discounts/my"
+        element={
+          <ProtectedRoute roles={['InsuredUser']}>
+            <Layout>
+              <MyDiscounts />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+         <Route
+        path="/discounts/hospital"
+        element={
+          <ProtectedRoute roles={['HospitalAdmin']}>
+            <Layout>
+              <DiscountRequestsHospital />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/discounts/agency"
+        element={
+          <ProtectedRoute roles={['InsuranceAgency']}>
+            <Layout>
+              <DiscountRequestsAgency />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="my-discounts"
+        element={
+          <ProtectedRoute roles={['InsuredUser']}>
+            <Layout>
+              <MyDiscounts />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/departments"
         element={
           <ProtectedRoute roles={['HospitalAdmin']}>
             <Layout>
               <Departments />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/hcontracts"
+        element={
+          <ProtectedRoute roles={['HospitalAdmin']}>
+            <Layout>
+              <HospitalContracts />
             </Layout>
           </ProtectedRoute>
         }
@@ -115,6 +167,17 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/agency-patients"
+        element={
+          <ProtectedRoute roles={[ 'InsuranceAgency']}>
+            <Layout>
+              <AgencyPatients />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        
 
       <Route
         path="/equipment"
@@ -161,16 +224,6 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/audit"
-        element={
-          <ProtectedRoute roles={[ 'InsuranceAgency']}>
-            <Layout>
-              <AuditLogs />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
         {/* HospitalAdmin Routes */}
       <Route
         path="/hospitals"
@@ -218,9 +271,29 @@ function AppRoutes() {
       <Route
         path="/agencies"
         element={
-          <ProtectedRoute roles={['InsuranceAgency']}>
+          <ProtectedRoute roles={['InsuredUser']}>
             <Layout>
               <InsuranceAgencies />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/payment-upload"
+        element={
+          <ProtectedRoute roles={['InsuredUser']}>
+            <Layout>
+              <PaymentUpload />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/request-service"
+        element={
+          <ProtectedRoute roles={['InsuredUser']}>
+            <Layout>
+              <RequestService />
             </Layout>
           </ProtectedRoute>
         }
@@ -256,16 +329,7 @@ function AppRoutes() {
         }
       />
       
-       <Route
-        path="/my-payments"
-        element={
-          <ProtectedRoute roles={['InsuredUser']}>
-            <Layout>
-              < MyPayments/>
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+    
       {/* Default Routes */}
      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

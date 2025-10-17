@@ -5,7 +5,7 @@ import Navbar from './../Layout/Navbar';
 import { Percent, Plus, Search, User, Hospital, CheckCircle, Clock, XCircle, Calculator, AlertCircle, Building2 } from 'lucide-react';
 
 const InsuranceDiscounts = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [discountRequests, setDiscountRequests] = useState([]);
   const [activeDiscounts, setActiveDiscounts] = useState([]);
   const [agencies, setAgencies] = useState([]);
@@ -15,7 +15,7 @@ const InsuranceDiscounts = () => {
   const [showModal, setShowModal] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [formData, setFormData] = useState({
-    insuranceAgencyId: '',
+    insuranceAgencyId: user?.id || '',
     hospitalId: '',
     patientId: '',
     requestedDiscountPercent: 5,
@@ -478,26 +478,6 @@ const InsuranceDiscounts = () => {
               }}>×</button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Agencija</label>
-                <select
-                  value={formData.insuranceAgencyId}
-                  onChange={(e) => setFormData({ ...formData, insuranceAgencyId: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '6px',
-                    fontSize: '1rem'
-                  }}
-                  required
-                >
-                  <option value="">Izaberite agenciju</option>
-                  {agencies.map(agency => (
-                    <option key={agency.id} value={agency.id}>{agency.name}</option>
-                  ))}
-                </select>
-              </div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bolnica</label>
                 <select

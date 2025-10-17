@@ -38,7 +38,10 @@ const Sidebar = () => {
         { path: '/equipment', icon: Wrench, label: 'Oprema', roles: ['HospitalAdmin'] },
         { path: '/appointments', icon: Calendar, label: 'Termini', roles: ['HospitalAdmin'] },
         { path: '/services', icon: ClipboardList, label: 'Usluge', roles: ['HospitalAdmin'] },
+        { path: '/hcontracts', icon: ClipboardList, label: 'Zahtevi', roles: ['HospitalAdmin'] },
         { path: '/pricelist', icon: FileText, label: 'Cenovnik', roles: ['HospitalAdmin'] },
+        { path: '/discounts/hospital', icon: FileText, label: 'Odobri zahteve', roles: ['HospitalAdmin'] },
+      
       );
     }
 
@@ -55,21 +58,27 @@ const Sidebar = () => {
     if (hasRole('InsuranceAgency')) {
       items.push(
         { path: '/hospitals', icon: Hospital, label: 'Bolnice', roles: ['InsuranceAgency'] },
-        { path: '/agencies', icon: Building2, label: 'Agencije', roles: ['InsuranceAgency'] },
-        { path: '/contracts', icon: FileText, label: 'Ugovori', roles: ['InsuranceAgency'] },
-        { path: '/patients', icon: Users, label: 'Osiguranici', roles: ['InsuranceAgency'] },
-        { path: '/payments', icon: CreditCard, label: 'Plaćanja', roles: ['InsuranceAgency'] },
-        { path: '/audit', icon: Shield, label: 'Audit Logovi', roles: ['InsuranceAgency'] },
-        { path: '/discounts', icon: Shield, label: 'Popusti', roles: ['InsuranceAgency'] }
+        { path: '/contracts', icon: FileText, label: 'Ugovori sa bolnicom', roles: ['InsuranceAgency'] },
+        { path: '/discounts', icon: Shield, label: 'Popusti', roles: ['InsuranceAgency'] },
+        { path: '/agency-patients', icon: Users, label: 'Osiguranici', roles: ['InsuranceAgency'] },
+        { path: '/discounts/agency', icon: Users, label: 'Zahtevi za popust ', roles: ['InsuranceAgency'] },
+
       );
     }
 
     // InsuredUser menu
     if (hasRole('InsuredUser')) {
       items.push(
+          { path: '/agencies', icon: Building2, label: 'Agencije', roles: ['InsuredUser'] },
         { path: '/browse-hospitals', icon: Hospital, label: 'Bolnice', roles: ['InsuredUser'] },
-        { path: '/my-reservations', icon: Calendar, label: 'Moje Rezervacije', roles: ['InsuredUser'] },
-        { path: '/my-payments', icon: CreditCard, label: 'Moja Plaćanja', roles: ['InsuredUser'] }
+        { path: '/my-reservations', icon: Calendar, label: 'Moji termini', roles: ['InsuredUser'] },
+        { path: '/my-contracts', icon: CreditCard, label: 'Predugovori', roles: ['InsuredUser'] },
+        { path: '/payment-upload', icon: CreditCard, label: 'Evidencije uplate', roles: ['InsuredUser'] },
+        { path: '/request-service', icon: CreditCard, label: 'Zahtev za pregled', roles: ['InsuredUser'] },
+        { path: '/my-discounts', icon: CreditCard, label: 'Moji popusti', roles: ['InsuredUser'] },
+
+
+
       );
     }
 

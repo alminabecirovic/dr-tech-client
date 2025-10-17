@@ -123,12 +123,6 @@ const Pricelist = () => {
         )}
 
         <div className="page-header">
-          <div>
-            <h2>Cenovnik Usluga</h2>
-            <p style={{ color: '#718096', marginTop: '8px' }}>
-              Cene važe do kraja godine i ne mogu se menjati naknadno
-            </p>
-          </div>
           {hasRole('HospitalAdmin') && (
             <button className="btn btn-primary" onClick={() => setShowModal(true)}>
               <Plus size={20} />

@@ -12,7 +12,7 @@ const Services = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'Exam',
+    type: 'Pregled',
     basePrice: 0
   });
   const [error, setError] = useState('');
@@ -56,7 +56,7 @@ const Services = () => {
       setFormData({
         name: '',
         description: '',
-        type: 'Exam',
+        type: 'Pregled',
         basePrice: 0
       });
       setShowModal(false);
@@ -77,12 +77,12 @@ const Services = () => {
 
   const getTypeBadge = (type) => {
     const colors = {
-      'Exam': { bg: '#bee3f8', color: '#2c5282' },
-      'Surgery': { bg: '#fed7d7', color: '#742a2a' },
-      'Lab': { bg: '#c6f6d5', color: '#22543d' },
-      'Imaging': { bg: '#feebc8', color: '#7c2d12' }
+      'Pregled': { bg: '#bee3f8', color: '#2c5282' },
+      'Operacija': { bg: '#fed7d7', color: '#742a2a' },
+      'Laboratorija': { bg: '#c6f6d5', color: '#22543d' },
+      'Dijagnostika': { bg: '#feebc8', color: '#7c2d12' }
     };
-    const style = colors[type] || colors['Exam'];
+    const style = colors[type] || colors['Pregled'];
     
     return (
       <span style={{
@@ -119,12 +119,6 @@ const Services = () => {
         )}
 
         <div className="page-header">
-          <div>
-            <h2>Medicinske Usluge</h2>
-            <p style={{ color: '#718096', marginTop: '8px' }}>
-              Pregled svih medicinskih usluga i njihovih cena
-            </p>
-          </div>
           {hasRole('HospitalAdmin') && (
             <button className="btn btn-primary" onClick={() => setShowModal(true)}>
               <Plus size={20} />
@@ -217,10 +211,10 @@ const Services = () => {
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="Exam">Exam - Pregled</option>
-                  <option value="Surgery">Surgery - Operacija</option>
-                  <option value="Lab">Lab - Laboratorija</option>
-                  <option value="Imaging">Imaging - Dijagnostika</option>
+                  <option value="Pregled">Pregled</option>
+                  <option value="Operacija">Operacija</option>
+                  <option value="Laboratorija">Laboratorija</option>
+                  <option value="Dijagnostika">Dijagnostika</option>
                 </select>
               </div>
 

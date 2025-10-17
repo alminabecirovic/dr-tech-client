@@ -256,8 +256,6 @@ async confirmPayment(paymentId, token) {
 async getPreContracts(token) {
   return this.get('/PreContracts', token);
 }
-
-
   async createPayment(formData, token) {
     return this.request('/Payments', {
       method: 'POST',
@@ -269,6 +267,98 @@ async getPreContracts(token) {
     });
   
   }
+  // ===== USER / INSURED USER =====
+async getUserProfile(token) {
+  return this.get('/User/profile', token);
+}
+
+async updateUserProfile(data, token) {
+  return this.put('/User/profile', data, token);
+}
+
+async getServicesWithFilters(filters, token) {
+  const params = new URLSearchParams();
+  if (filters?.serviceType) params.append('serviceType', filters.serviceType);
+  if (filters?.hospitalId) params.append('hospitalId', filters.hospitalId);
+  if (filters?.city) params.append('city', filters.city);
+  if (filters?.specialist) params.append('specialist', filters.specialist);
+  if (filters?.date) params.append('date', filters.date);
+  if (filters?.minPrice) params.append('minPrice', filters.minPrice);
+  if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice);
+  
+  const queryString = params.toString();
+  const endpoint = queryString ? `/User/services?${queryString}` : '/User/services';
+  return this.get(endpoint, token);
+}
+
+async getUserAppointments(token) {
+  return this.get('/User/appointments', token);
+}
+
+async requestAppointment(data, token) {
+  return this.post('/User/request-appointment', data, token);
+}
+
+async getUserDiscounts(token) {
+  return this.get('/User/discounts', token);
+}
+
+async requestDiscount(data, token) {
+  return this.post('/User/request-discount', data, token);
+}
+
+// ===== AGENCIES =====
+async getAgencies(token) {
+  return this.get('/Agencies', token);
+}
+
+async createAgency(data, token) {
+  return this.post('/Agencies', data, token);
+}
+
+// ===== CONTRACTS =====
+async getContracts(token) {
+  return this.get('/Contracts', token);
+}
+
+async createContract(data, token) {
+  return this.post('/Contracts', data, token);
+}
+
+// ===== DISCOUNTS =====
+async getDiscountRequests(token) {
+  return this.get('/Discount/requests', token);
+}
+
+async calculateDiscount(data, token) {
+  return this.post('/Discount/calculate', data, token);
+}
+
+async createDiscountRequest(data, token) {
+  return this.post('/Discount/request', data, token);
+}
+
+async approveDiscountRequest(id, data, token) {
+  return this.put(`/Discount/requests/${id}/approve`, data, token);
+}
+
+async rejectDiscountRequest(id, data, token) {
+  return this.put(`/Discount/requests/${id}/reject`, data, token);
+}
+
+async getPatientDiscounts(patientId, token) {
+  return this.get(`/Discount/patient/${patientId}`, token);
+}
+
+// ===== PAYMENTS =====
+async confirmPayment(paymentId, token) {
+  return this.put(`/Payments/${paymentId}/confirm`, {}, token);
+}
+
+// ===== PRE-CONTRACTS =====
+async getPreContracts(token) {
+  return this.get('/PreContracts', token).catch(() => []);
+}
 }
 
 export const api = new ApiService();

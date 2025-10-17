@@ -46,16 +46,7 @@ const Hospitals = () => {
             {error}
           </div>
         )}
-
-        <div className="page-header">
-          <div>
-            <h2>Pregled Bolnica</h2>
-            <p style={{ color: '#718096', marginTop: '8px' }}>
-              Sve medicinske ustanove iz baze
-            </p>
-          </div>
-        </div>
-
+        
         {hospitals.length === 0 ? (
           <div className="empty-state">
             <HospitalIcon size={64} color="#cbd5e0" />

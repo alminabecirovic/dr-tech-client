@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import Navbar from './../Layout/Navbar';
-import { FileText, Plus, Search, Building2, Hospital, CheckCircle, Clock, XCircle, Calendar, Percent } from 'lucide-react';
+import { FileText, Plus, Search, Building2, Hospital, CheckCircle, Clock, XCircle, Calendar, Percent, AlertCircle } from 'lucide-react';
 
 const InsuranceContracts = () => {
   const { token } = useAuth();
@@ -48,8 +48,7 @@ const InsuranceContracts = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError('');
     setSuccess('');
 
@@ -59,8 +58,19 @@ const InsuranceContracts = () => {
     }
 
     try {
-      await api.post('/Contracts', formData, token);
-      setSuccess('Ugovor uspešno poslat!');
+      const payload = {
+        insuranceAgencyId: formData.insuranceAgencyId,
+        hospitalId: formData.hospitalId,
+        coveragePercent: Number(formData.coveragePercent),
+        startsOn: new Date(formData.startsOn).toISOString(),
+        endsOn: new Date(formData.endsOn).toISOString(),
+        status: 'Proposed'
+      };
+
+      console.log('Sending payload:', payload);
+      
+      await api.post('/Contracts', payload, token);
+      setSuccess('Zahtev za ugovor uspešno poslat!');
       setFormData({
         insuranceAgencyId: '',
         hospitalId: '',
@@ -73,28 +83,18 @@ const InsuranceContracts = () => {
       loadData();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Greška pri kreiranju ugovora');
-      console.error(err);
+      setError('Greška pri slanju zahteva za ugovor');
+      console.error('Full error:', err);
     }
   };
 
   const getStatusBadge = (status) => {
-    const styles = {
-      Proposed: { bg: '#fff7e6', color: '#fa8c16', border: '#ffd591' },
-      Accepted: { bg: '#f6ffed', color: '#52c41a', border: '#b7eb8f' },
-      Rejected: { bg: '#fff2f0', color: '#cf1322', border: '#ffccc7' }
+    const config = {
+      Proposed: { bg: '#fff7e6', color: '#fa8c16', border: '#ffd591', icon: <Clock size={14} />, label: 'Na čekanju' },
+      Accepted: { bg: '#f6ffed', color: '#52c41a', border: '#b7eb8f', icon: <CheckCircle size={14} />, label: 'Prihvaćen' },
+      Rejected: { bg: '#fff2f0', color: '#cf1322', border: '#ffccc7', icon: <XCircle size={14} />, label: 'Odbijen' }
     };
-    const icons = {
-      Proposed: <Clock size={14} />,
-      Accepted: <CheckCircle size={14} />,
-      Rejected: <XCircle size={14} />
-    };
-    const labels = {
-      Proposed: 'Na čekanju',
-      Accepted: 'Prihvaćen',
-      Rejected: 'Odbijen'
-    };
-    const style = styles[status] || { bg: '#f5f5f5', color: '#595959', border: '#d9d9d9' };
+    const style = config[status] || { bg: '#f5f5f5', color: '#595959', border: '#d9d9d9', icon: null, label: status };
     
     return (
       <span style={{
@@ -109,8 +109,8 @@ const InsuranceContracts = () => {
         color: style.color,
         border: `1px solid ${style.border}`
       }}>
-        {icons[status]}
-        {labels[status] || status}
+        {style.icon}
+        {style.label}
       </span>
     );
   };
@@ -146,12 +146,7 @@ const InsuranceContracts = () => {
       <Navbar title="Ugovori" />
       
       <div className="dashboard-container">
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#262626', margin: 0 }}>Ugovori</h1>
-            <p style={{ color: '#8c8c8c', margin: '0.5rem 0 0 0' }}>Upravljajte ugovorima sa bolnicama</p>
-          </div>
           <button 
             onClick={() => setShowModal(true)}
             style={{
@@ -168,21 +163,24 @@ const InsuranceContracts = () => {
             }}
           >
             <Plus size={20} />
-            <span>Novi ugovor</span>
+            <span>Novi zahtev</span>
           </button>
         </div>
 
-        {/* Alerts */}
         {error && (
           <div style={{
             padding: '1rem',
             borderRadius: '6px',
             marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
             background: '#fff2f0',
             color: '#cf1322',
             border: '1px solid #ffccc7'
           }}>
-            {error}
+            <AlertCircle size={20} />
+            <span>{error}</span>
           </div>
         )}
         {success && (
@@ -198,7 +196,6 @@ const InsuranceContracts = () => {
           </div>
         )}
 
-        {/* Stats */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -243,7 +240,6 @@ const InsuranceContracts = () => {
           </div>
         </div>
 
-        {/* Filters */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={20} style={{
@@ -285,12 +281,11 @@ const InsuranceContracts = () => {
           </select>
         </div>
 
-        {/* Contracts Table */}
         {filteredContracts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '12px' }}>
             <FileText size={64} color="#d9d9d9" />
             <h3 style={{ margin: '1rem 0 0.5rem 0', color: '#595959' }}>Nema ugovora</h3>
-            <p style={{ color: '#8c8c8c' }}>Kreirajte prvi ugovor sa bolnicom</p>
+            <p style={{ color: '#8c8c8c' }}>Pošaljite prvi zahtev za ugovor kliknuvši na dugme "Novi zahtev"</p>
           </div>
         ) : (
           <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -384,7 +379,6 @@ const InsuranceContracts = () => {
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div style={{
           position: 'fixed',
@@ -408,7 +402,7 @@ const InsuranceContracts = () => {
             overflow: 'auto'
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#262626' }}>Novi ugovor</h2>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#262626' }}>Novi zahtev za ugovor</h2>
               <button onClick={() => setShowModal(false)} style={{
                 background: 'none',
                 border: 'none',
@@ -417,55 +411,72 @@ const InsuranceContracts = () => {
                 cursor: 'pointer'
               }}>×</button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Agencija</label>
-                <select
-                  value={formData.insuranceAgencyId}
-                  onChange={(e) => setFormData({ ...formData, insuranceAgencyId: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '6px',
-                    fontSize: '1rem'
-                  }}
-                  required
-                >
-                  <option value="">Izaberite agenciju</option>
-                  {agencies.map(agency => (
-                    <option key={agency.id} value={agency.id}>{agency.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bolnica</label>
-                <select
-                  value={formData.hospitalId}
-                  onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: '6px',
-                    fontSize: '1rem'
-                  }}
-                  required
-                >
-                  <option value="">Izaberite bolnicu</option>
-                  {hospitals.map(hospital => (
-                    <option key={hospital.id} value={hospital.id}>{hospital.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Procenat pokrića (%)</label>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Agencija</label>
+              <select
+                value={formData.insuranceAgencyId}
+                onChange={(e) => setFormData({ ...formData, insuranceAgencyId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="">Izaberite agenciju</option>
+                {agencies.map(agency => (
+                  <option key={agency.id} value={agency.id}>{agency.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bolnica</label>
+              <select
+                value={formData.hospitalId}
+                onChange={(e) => setFormData({ ...formData, hospitalId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              >
+                <option value="">Izaberite bolnicu</option>
+                {hospitals.map(hospital => (
+                  <option key={hospital.id} value={hospital.id}>{hospital.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Procenat pokrića (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.coveragePercent}
+                onChange={(e) => setFormData({ ...formData, coveragePercent: parseFloat(e.target.value) })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Početak</label>
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.coveragePercent}
-                  onChange={(e) => setFormData({ ...formData, coveragePercent: parseFloat(e.target.value) })}
+                  type="date"
+                  value={formData.startsOn}
+                  onChange={(e) => setFormData({ ...formData, startsOn: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -473,70 +484,51 @@ const InsuranceContracts = () => {
                     borderRadius: '6px',
                     fontSize: '1rem'
                   }}
-                  required
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Početak</label>
-                  <input
-                    type="date"
-                    value={formData.startsOn}
-                    onChange={(e) => setFormData({ ...formData, startsOn: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d9d9d9',
-                      borderRadius: '6px',
-                      fontSize: '1rem'
-                    }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Kraj</label>
-                  <input
-                    type="date"
-                    value={formData.endsOn}
-                    onChange={(e) => setFormData({ ...formData, endsOn: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #d9d9d9',
-                      borderRadius: '6px',
-                      fontSize: '1rem'
-                    }}
-                    required
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Kraj</label>
+                <input
+                  type="date"
+                  value={formData.endsOn}
+                  onChange={(e) => setFormData({ ...formData, endsOn: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '6px',
+                    fontSize: '1rem'
+                  }}
+                />
               </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{
-                  flex: 1,
-                  padding: '0.75rem 1.5rem',
-                  background: '#f5f5f5',
-                  color: '#595959',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}>
-                  Otkaži
-                </button>
-                <button type="submit" style={{
-                  flex: 1,
-                  padding: '0.75rem 1.5rem',
-                  background: '#1890ff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}>
-                  Pošalji ugovor
-                </button>
-              </div>
-            </form>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+              <button onClick={() => setShowModal(false)} style={{
+                flex: 1,
+                padding: '0.75rem 1.5rem',
+                background: '#f5f5f5',
+                color: '#595959',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}>
+                Otkaži
+              </button>
+              <button onClick={handleSubmit} style={{
+                flex: 1,
+                padding: '0.75rem 1.5rem',
+                background: '#1890ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}>
+                Pošalji zahtev
+              </button>
+            </div>
           </div>
         </div>
       )}

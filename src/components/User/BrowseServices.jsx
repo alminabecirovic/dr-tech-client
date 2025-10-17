@@ -9,18 +9,20 @@ const BrowseServices = () => {
   const [hospitals, setHospitals] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
-  const [priceList, setPriceList] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('hospitals'); // hospitals, doctors, services
+  const [activeTab, setActiveTab] = useState('hospitals');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     city: '',
     departmentId: '',
-    priceMin: '',
-    priceMax: '',
-    serviceType: ''
+    serviceType: '',
+    hospitalId: '',
+    minPrice: '',
+    maxPrice: '',
+    specialist: '',
+    date: ''
   });
   const [error, setError] = useState('');
 
@@ -28,22 +30,27 @@ const BrowseServices = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'services') {
+      loadServicesWithFilters();
+    }
+  }, [filters, activeTab]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [hospitalsData, doctorsData, servicesData, priceListData, departmentsData] = await Promise.all([
+      const [hospitalsData, doctorsData, departmentsData] = await Promise.all([
         api.get('/Hospitals', token),
         api.get('/Doctors', token),
-        api.get('/Services', token),
-        api.get('/PriceList', token),
         api.get('/Departments', token)
       ]);
 
       setHospitals(hospitalsData || []);
       setDoctors(doctorsData || []);
-      setServices(servicesData || []);
-      setPriceList(priceListData || []);
       setDepartments(departmentsData || []);
+      
+      // Load services with filters
+      await loadServicesWithFilters();
     } catch (err) {
       setError('Greška pri učitavanju podataka');
       console.error(err);
@@ -52,13 +59,38 @@ const BrowseServices = () => {
     }
   };
 
+  const loadServicesWithFilters = async () => {
+    try {
+      // Build query params for User/services endpoint
+      const params = new URLSearchParams();
+      if (filters.serviceType) params.append('serviceType', filters.serviceType);
+      if (filters.hospitalId) params.append('hospitalId', filters.hospitalId);
+      if (filters.city) params.append('city', filters.city);
+      if (filters.specialist) params.append('specialist', filters.specialist);
+      if (filters.date) params.append('date', filters.date);
+      if (filters.minPrice) params.append('minPrice', filters.minPrice);
+      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+
+      const queryString = params.toString();
+      const endpoint = queryString ? `/User/services?${queryString}` : '/User/services';
+      
+      const servicesData = await api.get(endpoint, token);
+      setServices(servicesData || []);
+    } catch (err) {
+      console.error('Error loading services:', err);
+    }
+  };
+
   const clearFilters = () => {
     setFilters({
       city: '',
       departmentId: '',
-      priceMin: '',
-      priceMax: '',
-      serviceType: ''
+      serviceType: '',
+      hospitalId: '',
+      minPrice: '',
+      maxPrice: '',
+      specialist: '',
+      date: ''
     });
   };
 
@@ -78,40 +110,12 @@ const BrowseServices = () => {
     return matchesSearch && matchesDepartment;
   });
 
-  // Filter services with prices
+  // Filter services (client-side additional filtering based on search)
   const filteredServices = services.filter(service => {
     const matchesSearch = service.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          service.code?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !filters.serviceType || service.type === filters.serviceType;
-    
-    // Check price range
-    const servicePrices = priceList.filter(p => p.medicalServiceId === service.id && p.isActive);
-    if (servicePrices.length > 0) {
-      const avgPrice = servicePrices.reduce((sum, p) => sum + p.price, 0) / servicePrices.length;
-      const matchesMinPrice = !filters.priceMin || avgPrice >= parseFloat(filters.priceMin);
-      const matchesMaxPrice = !filters.priceMax || avgPrice <= parseFloat(filters.priceMax);
-      return matchesSearch && matchesType && matchesMinPrice && matchesMaxPrice;
-    }
-    
-    return matchesSearch && matchesType;
+    return matchesSearch;
   });
-
-  const getServicePrice = (serviceId, hospitalId) => {
-    const price = priceList.find(p => 
-      p.medicalServiceId === serviceId && 
-      (!hospitalId || p.hospitalId === hospitalId) && 
-      p.isActive
-    );
-    return price ? price.price : null;
-  };
-
-  const getServicePriceRange = (serviceId) => {
-    const prices = priceList.filter(p => p.medicalServiceId === serviceId && p.isActive);
-    if (prices.length === 0) return null;
-    const min = Math.min(...prices.map(p => p.price));
-    const max = Math.max(...prices.map(p => p.price));
-    return { min, max };
-  };
 
   if (loading) {
     return (
@@ -127,7 +131,6 @@ const BrowseServices = () => {
       <Navbar title="Pretraživanje" />
       
       <div className="dashboard-container">
-        {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#262626', margin: 0 }}>
             Pretražite zdravstvene usluge
@@ -137,7 +140,6 @@ const BrowseServices = () => {
           </p>
         </div>
 
-        {/* Error Alert */}
         {error && (
           <div style={{
             padding: '1rem',
@@ -361,12 +363,69 @@ const BrowseServices = () => {
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#595959' }}>
+                      Bolnica
+                    </label>
+                    <select
+                      value={filters.hospitalId}
+                      onChange={(e) => setFilters({ ...filters, hospitalId: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <option value="">Sve bolnice</option>
+                      {hospitals.map(h => (
+                        <option key={h.id} value={h.id}>{h.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#595959' }}>
+                      Grad
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.city}
+                      onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                      placeholder="Unesite grad"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#595959' }}>
+                      Specijalista
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.specialist}
+                      onChange={(e) => setFilters({ ...filters, specialist: e.target.value })}
+                      placeholder="Unesite specijalnost"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#595959' }}>
                       Min. cena ($)
                     </label>
                     <input
                       type="number"
-                      value={filters.priceMin}
-                      onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                      value={filters.minPrice}
+                      onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
                       placeholder="0"
                       style={{
                         width: '100%',
@@ -383,9 +442,26 @@ const BrowseServices = () => {
                     </label>
                     <input
                       type="number"
-                      value={filters.priceMax}
-                      onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                      value={filters.maxPrice}
+                      onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
                       placeholder="10000"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#595959' }}>
+                      Datum
+                    </label>
+                    <input
+                      type="date"
+                      value={filters.date}
+                      onChange={(e) => setFilters({ ...filters, date: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '0.5rem',
@@ -558,7 +634,7 @@ const BrowseServices = () => {
                         Tip
                       </th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
-                        Cena
+                        Cene
                       </th>
                       <th style={{ padding: '1rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#8c8c8c', textTransform: 'uppercase' }}>
                         Akcija
@@ -567,9 +643,9 @@ const BrowseServices = () => {
                   </thead>
                   <tbody>
                     {filteredServices.map((service) => {
-                      const priceRange = getServicePriceRange(service.id);
                       const typeLabels = { exam: 'Pregled', surgery: 'Operacija', lab: 'Laboratorija' };
                       const typeColors = { exam: '#1890ff', surgery: '#cf1322', lab: '#52c41a' };
+                      
                       return (
                         <tr key={service.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                           <td style={{ padding: '1rem 1.5rem' }}>
@@ -605,13 +681,19 @@ const BrowseServices = () => {
                             </span>
                           </td>
                           <td style={{ padding: '1rem 1.5rem' }}>
-                            {priceRange ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <DollarSign size={16} color="#8c8c8c" />
-                                <span style={{ fontWeight: 600, color: '#262626' }}>
-                                  ${priceRange.min.toFixed(2)}
-                                  {priceRange.min !== priceRange.max && ` - $${priceRange.max.toFixed(2)}`}
-                                </span>
+                            {service.prices && service.prices.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                {service.prices.map((price, idx) => (
+                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                                    <DollarSign size={14} color="#8c8c8c" />
+                                    <span style={{ fontWeight: 600, color: '#262626' }}>
+                                      ${price.price.toFixed(2)}
+                                    </span>
+                                    <span style={{ fontSize: '0.75rem', color: '#8c8c8c' }}>
+                                      ({hospitals.find(h => h.id === price.hospitalId)?.name || 'N/A'})
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                             ) : (
                               <span style={{ color: '#8c8c8c', fontSize: '0.875rem' }}>N/A</span>

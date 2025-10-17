@@ -202,12 +202,6 @@ await api.scheduleEquipmentService(selectedEquipment.id, formattedServiceData, t
         )}
 
         <div className="page-header">
-          <div>
-            <h2>Upravljanje Opremom</h2>
-            <p style={{ color: '#718096', marginTop: '8px' }}>
-              Pregled medicinske opreme, statusa i servisnih naloga
-            </p>
-          </div>
           {hasRole('HospitalAdmin') && (
             <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
               <Plus size={20} />

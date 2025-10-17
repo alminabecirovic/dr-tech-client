@@ -162,10 +162,7 @@ const DoctorDashboard = ({ stats }) => (
   <div className="dashboard-container">
     <div className="dashboard-welcome">
       <div className="welcome-content">
-        <h1 className="welcome-title">Dobrodošli, Doktore</h1>
-        <p className="welcome-subtitle">
-          Pregledajte svoje termine, pacijente i dostupnu opremu
-        </p>
+        <h1 className="welcome-title">Dobrodošli</h1>
       </div>
       <div className="welcome-icon">
         <Stethoscope size={48} color="#597ef7" strokeWidth={1.5} />
@@ -178,21 +175,18 @@ const DoctorDashboard = ({ stats }) => (
         label="Ukupno pacijenata"
         value={stats.patients}
         color="#fa8c16"
-        trend="+3 nova"
       />
       <StatCard
         icon={Calendar}
         label="Svi termini"
         value={stats.appointments}
         color="#52c41a"
-        trend="Ovaj mesec"
       />
       <StatCard
         icon={Calendar}
         label="Današnji termini"
         value={stats.todayAppointments}
         color="#1890ff"
-        trend="U toku"
         highlight
       />
     </div>
@@ -212,25 +206,16 @@ const InsuranceAgencyDashboard = ({ stats }) => (
 
     <div className="stats-grid">
       <StatCard
-        icon={Building2}
-        label="Agencije"
-        value={stats.agencies}
-        color="#1890ff"
-        trend="Aktivno"
-      />
-      <StatCard
         icon={FileText}
         label="Ukupno ugovora"
         value={stats.contracts}
         color="#597ef7"
-        trend="+8 ovog meseca"
       />
       <StatCard
         icon={FileText}
         label="Aktivni ugovori"
         value={stats.activeContracts}
         color="#52c41a"
-        trend="U statusu"
         highlight
       />
       <StatCard
@@ -238,14 +223,12 @@ const InsuranceAgencyDashboard = ({ stats }) => (
         label="Ukupno plaćanja"
         value={stats.payments}
         color="#fa8c16"
-        trend="Sva plaćanja"
       />
       <StatCard
         icon={CreditCard}
         label="Potvrđena plaćanja"
         value={stats.confirmedPayments}
         color="#722ed1"
-        trend="Procesuirano"
       />
     </div>
   </div>
