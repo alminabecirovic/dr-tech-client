@@ -1,5 +1,5 @@
 // services/api.js
-const API_BASE_URL = 'dr-tech-client.vercel.app/api';
+const API_BASE_URL = 'https://dr-tech-production.up.railway.app/api';
 
 
 class ApiService {
