@@ -26,6 +26,7 @@ import InsuranceAgencies from './components/User/InsuranceAgencies';
 import DiscountRequestsAgency from './components/Agencies/DiscountRequestsAgency';
 import DiscountRequestsHospital from './components/HospitalAdmin/DiscountRequestsHospital';
 import MyDiscounts from './components/User/MyDiscounts';
+import ConfirmPayments from './components/HospitalAdmin/ConfrimPayments';
 
 import './styles/global.css';
 
@@ -143,7 +144,16 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+     <Route
+        path="/confrim-payments"
+        element={
+          <ProtectedRoute roles={['HospitalAdmin','InsuranceAgency']}>
+            <Layout>
+              <HospitalContracts />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       {/* HospitalAdmin & Doctor Routes */}
       <Route
         path="/doctors"

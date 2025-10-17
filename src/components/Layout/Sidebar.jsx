@@ -41,6 +41,7 @@ const Sidebar = () => {
         { path: '/hcontracts', icon: ClipboardList, label: 'Zahtevi', roles: ['HospitalAdmin'] },
         { path: '/pricelist', icon: FileText, label: 'Cenovnik', roles: ['HospitalAdmin'] },
         { path: '/discounts/hospital', icon: FileText, label: 'Odobri zahteve', roles: ['HospitalAdmin'] },
+         { path: '/confrim-payments', icon: FileText, label: 'Odobri uplatu', roles: ['HospitalAdmin'] },
       
       );
     }
@@ -51,6 +52,7 @@ const Sidebar = () => {
         { path: '/my-appointments', icon: Calendar, label: 'Moji Termini', roles: ['Doctor'] },
         { path: '/patients', icon: Users, label: 'Pacijenti', roles: ['Doctor'] },
         { path: '/equipment', icon: Wrench, label: 'Oprema', roles: ['Doctor'] }
+
       );
     }
 
@@ -62,7 +64,7 @@ const Sidebar = () => {
         { path: '/discounts', icon: Shield, label: 'Popusti', roles: ['InsuranceAgency'] },
         { path: '/agency-patients', icon: Users, label: 'Osiguranici', roles: ['InsuranceAgency'] },
         { path: '/discounts/agency', icon: Users, label: 'Zahtevi za popust ', roles: ['InsuranceAgency'] },
-
+        { path: '/confrim-payments', icon: FileText, label: 'Odobri uplatu', roles: ['InsuranceAgency'] },
       );
     }
 
