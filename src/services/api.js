@@ -1,5 +1,5 @@
 // services/api.js
-const API_BASE_URL = 'https://dr-tech-production.up.railway.app/swagger/index.html';
+const API_BASE_URL = 'https://dr-tech-production.up.railway.app';
 
 
 class ApiService {
