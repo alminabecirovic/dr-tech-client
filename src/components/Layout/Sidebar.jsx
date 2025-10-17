@@ -71,14 +71,9 @@ const Sidebar = () => {
       items.push(
           { path: '/agencies', icon: Building2, label: 'Agencije', roles: ['InsuredUser'] },
         { path: '/browse-hospitals', icon: Hospital, label: 'Bolnice', roles: ['InsuredUser'] },
-        { path: '/my-reservations', icon: Calendar, label: 'Moji termini', roles: ['InsuredUser'] },
-        { path: '/my-contracts', icon: CreditCard, label: 'Predugovori', roles: ['InsuredUser'] },
         { path: '/payment-upload', icon: CreditCard, label: 'Evidencije uplate', roles: ['InsuredUser'] },
         { path: '/request-service', icon: CreditCard, label: 'Zahtev za pregled', roles: ['InsuredUser'] },
         { path: '/my-discounts', icon: CreditCard, label: 'Moji popusti', roles: ['InsuredUser'] },
-
-
-
       );
     }
 

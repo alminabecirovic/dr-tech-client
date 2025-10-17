@@ -15,7 +15,6 @@ import MyAppointments from './components/Doctor/MyAppointments';
 import Services from './components/HospitalAdmin/Services';
 import PriceList from './components/HospitalAdmin/PriceList';
 import BrowseServices from './components/User/BrowseServices';  
-import MyReservations from './components/User/MyReservations';
 import InsuranceContracts from './components/Agencies/InsuranceContracts';
 import InsuranceDiscounts from './components/Agencies/InsuranceDiscounts';
 import InsurancePayments from './components/Agencies/InsurancePayments';
@@ -253,16 +252,6 @@ function AppRoutes() {
           <ProtectedRoute roles={['InsuredUser']}>
             <Layout>
               <BrowseServices />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/my-reservations"
-        element={
-          <ProtectedRoute roles={['InsuredUser']}>
-            <Layout>
-              <MyReservations />
             </Layout>
           </ProtectedRoute>
         }
