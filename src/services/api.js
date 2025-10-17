@@ -1,7 +1,6 @@
 // services/api.js
 const API_BASE_URL = 'https://dr-tech-production.up.railway.app/api';
 
-
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -13,7 +12,8 @@ class ApiService {
     const config = {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        // Dodaj Content-Type SAMO ako body nije FormData
+        ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
         ...options.headers,
       },
     };
@@ -155,23 +155,6 @@ class ApiService {
     return this.get('/Doctors', token);
   }
 
-  async createDoctor(data, token) {
-    return this.post('/Doctors', data, token);
-  }
-
-  // ===== PATIENTS =====
-  async getPatients(token) {
-    return this.get('/Patients', token);
-  }
-
-  async createPatient(data, token) {
-    return this.post('/Patients', data, token);
-  }
-  // ===== DOCTORS =====
-  async getDoctors(token) {
-    return this.get('/Doctors', token);
-  }
-
   async getDoctorById(id, token) {
     return this.get(`/Doctors/${id}`, token);
   }
@@ -200,6 +183,7 @@ class ApiService {
   async deletePatient(id, token) {
     return this.delete(`/Patients/${id}`, token);
   }
+
   // ===== MEDICAL SERVICES =====
   async getServices(token) {
     return this.get('/Services', token);
@@ -243,19 +227,12 @@ class ApiService {
   async exportAuditLogs(data, token) {
     return this.post('/Audit/export', data, token);
   }
-// Confirm payment (for InsuranceAgency)
-async confirmPayment(paymentId, token) {
-  return this.put(`/Payments/${paymentId}/confirm`, {}, token);
-}
 
   // ===== PAYMENTS =====
   async getPayments(token) {
     return this.get('/Payments', token);
   }
-  // PreContracts
-async getPreContracts(token) {
-  return this.get('/PreContracts', token);
-}
+
   async createPayment(formData, token) {
     return this.request('/Payments', {
       method: 'POST',
@@ -265,100 +242,103 @@ async getPreContracts(token) {
       },
       body: formData // Šalji direkt FormData objekat
     });
-  
   }
+
+  async confirmPayment(paymentId, token) {
+    return this.put(`/Payments/${paymentId}/confirm`, {}, token);
+  }
+
+  // ===== PRE-CONTRACTS =====
+  async getPreContracts(token) {
+    return this.get('/PreContracts', token).catch(() => []);
+  }
+
+  async createPreContract(data, token) {
+    return this.post('/PreContracts', data, token);
+  }
+
   // ===== USER / INSURED USER =====
-async getUserProfile(token) {
-  return this.get('/User/profile', token);
-}
+  async getUserProfile(token) {
+    return this.get('/User/profile', token);
+  }
 
-async updateUserProfile(data, token) {
-  return this.put('/User/profile', data, token);
-}
+  async updateUserProfile(data, token) {
+    return this.put('/User/profile', data, token);
+  }
 
-async getServicesWithFilters(filters, token) {
-  const params = new URLSearchParams();
-  if (filters?.serviceType) params.append('serviceType', filters.serviceType);
-  if (filters?.hospitalId) params.append('hospitalId', filters.hospitalId);
-  if (filters?.city) params.append('city', filters.city);
-  if (filters?.specialist) params.append('specialist', filters.specialist);
-  if (filters?.date) params.append('date', filters.date);
-  if (filters?.minPrice) params.append('minPrice', filters.minPrice);
-  if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice);
-  
-  const queryString = params.toString();
-  const endpoint = queryString ? `/User/services?${queryString}` : '/User/services';
-  return this.get(endpoint, token);
-}
+  async getServicesWithFilters(filters, token) {
+    const params = new URLSearchParams();
+    if (filters?.serviceType) params.append('serviceType', filters.serviceType);
+    if (filters?.hospitalId) params.append('hospitalId', filters.hospitalId);
+    if (filters?.city) params.append('city', filters.city);
+    if (filters?.specialist) params.append('specialist', filters.specialist);
+    if (filters?.date) params.append('date', filters.date);
+    if (filters?.minPrice) params.append('minPrice', filters.minPrice);
+    if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice);
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/User/services?${queryString}` : '/User/services';
+    return this.get(endpoint, token);
+  }
 
-async getUserAppointments(token) {
-  return this.get('/User/appointments', token);
-}
+  async getUserAppointments(token) {
+    return this.get('/User/appointments', token);
+  }
 
-async requestAppointment(data, token) {
-  return this.post('/User/request-appointment', data, token);
-}
+  async requestAppointment(data, token) {
+    return this.post('/User/request-appointment', data, token);
+  }
 
-async getUserDiscounts(token) {
-  return this.get('/User/discounts', token);
-}
+  async getUserDiscounts(token) {
+    return this.get('/User/discounts', token);
+  }
 
-async requestDiscount(data, token) {
-  return this.post('/User/request-discount', data, token);
-}
+  async requestDiscount(data, token) {
+    return this.post('/User/request-discount', data, token);
+  }
 
-// ===== AGENCIES =====
-async getAgencies(token) {
-  return this.get('/Agencies', token);
-}
+  // ===== AGENCIES =====
+  async getAgencies(token) {
+    return this.get('/Agencies', token);
+  }
 
-async createAgency(data, token) {
-  return this.post('/Agencies', data, token);
-}
+  async createAgency(data, token) {
+    return this.post('/Agencies', data, token);
+  }
 
-// ===== CONTRACTS =====
-async getContracts(token) {
-  return this.get('/Contracts', token);
-}
+  // ===== CONTRACTS =====
+  async getContracts(token) {
+    return this.get('/Contracts', token);
+  }
 
-async createContract(data, token) {
-  return this.post('/Contracts', data, token);
-}
+  async createContract(data, token) {
+    return this.post('/Contracts', data, token);
+  }
 
-// ===== DISCOUNTS =====
-async getDiscountRequests(token) {
-  return this.get('/Discount/requests', token);
-}
+  // ===== DISCOUNTS =====
+  async getDiscountRequests(token) {
+    return this.get('/Discount/requests', token);
+  }
 
-async calculateDiscount(data, token) {
-  return this.post('/Discount/calculate', data, token);
-}
+  async calculateDiscount(data, token) {
+    return this.post('/Discount/calculate', data, token);
+  }
 
-async createDiscountRequest(data, token) {
-  return this.post('/Discount/request', data, token);
-}
+  async createDiscountRequest(data, token) {
+    return this.post('/Discount/request', data, token);
+  }
 
-async approveDiscountRequest(id, data, token) {
-  return this.put(`/Discount/requests/${id}/approve`, data, token);
-}
+  async approveDiscountRequest(id, data, token) {
+    return this.put(`/Discount/requests/${id}/approve`, data, token);
+  }
 
-async rejectDiscountRequest(id, data, token) {
-  return this.put(`/Discount/requests/${id}/reject`, data, token);
-}
+  async rejectDiscountRequest(id, data, token) {
+    return this.put(`/Discount/requests/${id}/reject`, data, token);
+  }
 
-async getPatientDiscounts(patientId, token) {
-  return this.get(`/Discount/patient/${patientId}`, token);
-}
-
-// ===== PAYMENTS =====
-async confirmPayment(paymentId, token) {
-  return this.put(`/Payments/${paymentId}/confirm`, {}, token);
-}
-
-// ===== PRE-CONTRACTS =====
-async getPreContracts(token) {
-  return this.get('/PreContracts', token).catch(() => []);
-}
+  async getPatientDiscounts(patientId, token) {
+    return this.get(`/Discount/patient/${patientId}`, token);
+  }
 }
 
 export const api = new ApiService();
